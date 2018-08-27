@@ -1,0 +1,273 @@
+* Knot - an experimental language for manipulating strings.
+** About Knot
+   - I kinda sorta have a vision and am moving towards it with flexibility.
+     Accepting input but not focusing on outside voices at this point. This
+     epoch: single developer messing around trying to solve own problem and get
+     lay of the land.
+   - Let ergonomics and use case define the syntax.
+   - The code is mostly...terrible. I'm going for red, green, refactor, with
+     refactor tentatively planned for 2026. I work on Knot in the hour after my
+     family goes to sleep while I can keep my eyes open. For this phase of the
+     project's lifetime (which, mostly, will be the only phase it has), I plan to
+     take code quality shortcuts that would terrify even the most aggressive
+     product manager...
+** Alternative slogans
+   - (because why not)
+   - Bring joy to strings.
+   - The joy of strings.
+   - A toy language for manipulating strings
+   - A little language for working with strings.
+   - Tired of AsciiDecode errors?
+** Possible real-world applications
+   - (not trying hard on this, because I don't really care, just jotting things
+     down as they occur to me)
+   - watermarking documents
+   - maybe some applications to translating texts?
+
+
+* Motivations
+** Rethinking quoting
+** No off-by-one errors
+** No mojibake or "failed to decode character" that isn't ascii
+** A sense that there's no PL totally focused on strings, so why not
+   - I spend a lot of my time working with strings, after all
+** I (learn how to) write a PL
+
+
+* String delimiter options                                             :lang:
+  - Name the delimiter characters "hitch" and "lash". What are they? Ideas:
+  - Allow their values to be specified as a config per user/project, and then be
+    transformed by code formatter run via lace.
+  - An infrequently used code point such as U+001D GROUP SEPARATOR , U+001E RECORD SEPARATOR, U+001F
+    UNIT SEPARATOR, or something from
+    https://www.fileformat.info/info/unicode/category/Zs/list.htm Question is
+    whether this is semantically correct?
+  - A byte sequence that is not valid utf-8? Not valid in any known encoding?
+    Knot editors would have to know how to handle it. In canonical Knot editors,
+    it could be used to set apart strings visually, such as different font,
+    color, weight, etc. Make an Emacs mode that knows how to handle it, and
+    worry about the rest later. Overlay to show a nicer char than \221.
+    - All .knot source files must be encoded in utf-8-knot which is a
+      superset of utf-8 that includes 0xFE (254) and 0xFF (255).
+  - Or better yet, use a character from one of the private use areas. U+E555
+    (hitch) and U+E556 (lash). Thus neither of these are valid within a Knot
+    string; they can only ever be used to open and close a string. More
+    candidates:
+      - U+0091 and U+0092 (private use from the C1 control block, old school!)
+      - U+E555 U+E556 (I just like these numerals)
+      - something random from the private use astral planes, very unlikely to
+        be used anywhere?
+* Code point literals and escaping                                     :lang:
+  - What about code point entry? Should it use escaping for that? Perhaps.
+    Example: "\U+0041" -- make it look exactly like Unicode writes code points,
+    preceded by a backslash.
+* Types                                                                :lang:
+  - String difference is an operator. Edits are first-class objects.
+    Transform is a series of Edits.
+#+BEGIN_SRC knot
+> s1 = "abc"
+"abc"
+> s2 = "bcd"
+"bcd"
+> t1 = s1 ~ s2
+<Transform -a+d>
+> t1.length
+2
+> t1[0]
+-a
+> t1[1]
++d
+> t = -b
+<Transform -b>
+> -b ~> s1
+"ac"
+#+END_SRC
+** type Codepoint -- Single code point/character
+    - operators that operate on unicode properties, so thus this type must a
+      single instance of the thing that can have unicode properties -- is that
+      code point?
+** type Edit: a mini-language representing edits to strings.
+    - In Knot, Edits are a primitive type.
+    - type Edit -- a change to a string
+
+ #+BEGIN_SRC knot
+ +b # add b to end of string (implicit)
+ +b<$> # add b to end of string (explicit)
+ +b<^> # add b to beginning of string
+ -b # remove first "b" found
+ -b<g> # remove all "b"'s
+ -b0 # remove first "b0" found
+ -b<0> # remove a "b" if found at position 0, else do nothing
+ -b<0>c<0> # remove "b" if found at position 0 or "c" if found at position 0
+ /<0,1> # transpose chars (code points?) at positions 0 and 1
+ +\<<0> # add a "<" to beginningn of string
+
+ + add
+ - remove
+ / transpose
+
+ > e = new Edit(+b+c)
+ <Edit +b+c>
+ > e[0]
+ +b
+ > e[1]
+ +c
+ > e.length
+ 2
+ > e[2]
+ Error
+ #+END_SRC
+** type Transform -- sequence of Edits
+** type String or UnicodeString
+   - internally is represented as value[<T>] -- sequence of somethings, likely
+     CodePoints, GraphemeClusters, or bytes.
+* length is too ambiguous                                              :lang:
+  - No "length" property because too ambiguous. Fully supports Unicode. Operate
+    on code points, grapheme clusters, etc.
+#+BEGIN_SRC knot
+> s1.length
+ReferenceError: length
+> s1.numCodePoints
+3
+> s1.numGraphemeClusters
+3
+#+END_SRC
+Use case: Implement a spell checker in a couple lines.
+#+BEGIN_SRC knot
+dictionary = import "words.txt"
+
+def check_word(word):
+  # Calculate the edit distance of word against every string in dictionary. Sort
+  # ascending. Will return word if it's a word, else the entry in dictionary
+  # with the smallest edit distance from word.
+  return (word ~~ dictionary).sort()[0]
+
+# Potentially could have a builtin default dictionary, or different ones for
+# different languages. Potentially could include relative word popularity data
+# as well, allow sorting on popularity.
+
+string1 ~ string # Returns an Edit or Diff
+string1 ~~ list of strings # Returns a list of Edits/Diffs of string1 against
+each word in strings.
+edit ~> string # Returns string with edit applied to it.
+#+END_SRC
+* arena/domain/eye/scope/realm                                         :lang:
+   - scope in which all strings have certain values for certain properties, such
+     as case, ASCII-ness, BMP-ness, composition
+   - represent arena definition as a bitmap?
+   - define a default arena
+     - allow any value for any property?
+   - track strings' bitmaps for easy arena membership testing
+     (belong/conform/fit/match)
+#+BEGIN_SRC knot
+arena ar_uppercase = {
+  transform uppercase;
+}
+
+ar_uppercase {
+  # code...
+}
+#+END_SRC
+* encodings are operators                                              :lang:
+   - strings are utf-8 encoded by default? or a platonic, encoding-less unicode
+     type, like Python u''?
+   - there's a raw byte[] type
+   - there's a byte equality operator ==, and a semantic equality operator. Its
+     behavior on several axes must be explcitily specified, and can be
+     thoroughly customized (this is like collation, but more comprehensive):
+     - encoding
+     - unicode composition/normalization
+     - significance of case
+     - diacritics
+     - whitespace
+   - there's an edit distance operator ~~. Its behavior must also be specified
+     with regard to the same parameters as equality: give a distance unit to
+     types of differences, e.g., 1 for whole-character deletion, 0.5 for
+     diacritic deletion, etc.
+#+BEGIN_SRC knot
+> s = "mañana" # encoded in utf-8
+"mañana"
+> (iso-8859)s
+"mañana" # iso-8859 bytes
+
+#+END_SRC
+   - you can enter different "domains" (come up with a better term) in which
+     comprehensive collation is defined, such as an entire .knot file (a
+     module), or scopes within a file, or entire projects.
+
+* all Unicode properties available on all characters/codepoints        :lang:
+** for a given UnicodeString
+   - how can it be divided into pieces?
+     - byte
+     - CodePoint
+     - GraphemeCluster
+   - what are the properties of each of these pieces?
+   - what are its properties as a whole?
+* convenient/ergonomic operators                                       :lang:
+  - first, 1st
+  - 2nd
+  - nth(x)
+  - last
+* units, like in CSS                                                   :lang:
+  - b - instance of byte
+  - cp - instance of CodePoint
+  - gc - instance of GraphemeCluster
+  - w - instance of Word, with some sane default delimiter like \s+
+#+BEGIN_SRC knot
+4cp         # 4 code points
+4th cp      # code point 4
+nth(24)cp   # 24th code point
+first cp    # first code point
+first cp é  # first code point that is é
+nth(x) cp   # x'th code point
+4b          # 4 bytes
+4th b       # 4th byte
+4gc         # 4 grapheme clusters
+4w          # 4 words
+last w      # last word
+  - default definition of word = \s([^\s]+)\s
+  -
+  #+END_SRC
+
+
+* TODO build tooling                                                :tooling:
+   - tie: compiler
+   - lace: build and package tool
+* TODO use BLNS                                                     :tooling:
+  - big list naughty strings
+* ACTIVE knot-mode                                            :tooling:emacs:
+  - In knot-mode, map some key (maybe ' and ") to insert hitch and lash.
+  - http://ergoemacs.org/emacs/elisp_comment_coloring.html
+
+* TODO All .knot source files must be encoded in utf-8.             :tooling:
+  - [ ] Enforce this
+  - [ ] tooling to quickly see what encoding a file is in, and convert it.
+
+
+* references                                                 :implementation:
+   - https://www.reddit.com/r/ProgrammingLanguages/comments/3qv50d/how_to_get_started_in_building_a_programming/
+   - https://compilers.iecc.com/crenshaw/
+   - http://www.craftinginterpreters.com/
+   - https://ruslanspivak.com/lsbasi-part1/
+   - http://ergoemacs.org/emacs/elisp_font_lock_mode.html
+* stack                                                      :implementation:
+  - https://www.npmjs.com/package/utf8-stream
+  - https://www.npmjs.com/package/token-stream
+* TODO libs needed                                           :implementation:
+** unicode/icu/w_char
+   - https://www.npmjs.com/package/iconv-lite -- this is probably what I want
+   - https://www.npmjs.com/package/chardet -- charset detection
+   - https://github.com/mathiasbynens/node-unicode-data#readme
+** regexes
+   - http://www.icu-project.org/userguide/regexp
+   - regenerate
+
+* TODO research unique useful string handling functions in other languages :research:
+  - perl?
+* TODO research interning and boxing                :implementation:research:
+* TODO research how hitch and lash are rendered in some popular editors :research:
+* TODO research IRs and how to emit machine code    :research:implementation:
+  - bare bones backend (b3): https://webkit.org/docs/b3/
+    - https://stackoverflow.com/questions/49313984/using-b3-jit-as-a-backend-for-a-statically-compiled-language
+* TODO logo                                                       :marketing:
+  - Eldar?

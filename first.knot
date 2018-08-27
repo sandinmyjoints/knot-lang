@@ -1,0 +1,19 @@
+# sample knot program
+# this is a comment
+str1 = This's a real breakthrough because quotes don't need to be escaped!;
+edit x = +a;
+
+a = 1;
+str = abc;
+
+# type(str) == UnicodeString
+# type first cp str == CodePoint
+# first cp str == CodePoint<97>, ie, u+0061
+
+# type first gc str == GraphemeCluster
+# first gc str == a
+
+# first b str == ERROR, unicode strings are made of CodePoints, not bytes
+
+# first b <utf-8>str == 0x61 hex / 97 decimal
+# type <utf-8>str == EncodedString
