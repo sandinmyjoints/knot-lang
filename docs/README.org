@@ -68,10 +68,11 @@
     (hitch) and U+E556 (lash). Thus neither of these are valid within a Knot
     string; they can only ever be used to open and close a string. More
     candidates:
-      - U+0091 and U+0092 (private use from the C1 control block, old school!)
-      - U+E555 U+E556 (I just like these numerals)
-      - something random from the private use astral planes, very unlikely to
-        be used anywhere?
+    - U+0091 and U+0092 (private use from the C1 control block, old school!)
+      - perl: "\x[0091]"
+    - U+E555 U+E556 (I just like these numerals)
+    - something random from the private use astral planes, very unlikely to
+      be used anywhere?
 * Code point literals and escaping                                     :lang:
   - What about code point entry? Should it use escaping for that? Perhaps.
     Example: "\U+0041" -- make it look exactly like Unicode writes code points,
