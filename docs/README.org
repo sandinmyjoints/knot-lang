@@ -1,10 +1,25 @@
 * Knot - an experimental language for manipulating strings.
 ** About Knot
+   - Knot is a (hypothetical) language, a thought experiment.
    - I kinda sorta have a vision and am moving towards it with flexibility.
      Accepting input but not focusing on outside voices at this point. This
      epoch: single developer messing around trying to solve own problem and get
      lay of the land.
-   - Let ergonomics and use case define the syntax.
+   - I get that implementing, for example, grapheme cluster algorithms is a
+     monumental task.  I'm not concerned with "can we conceive of a perfomant
+     implementation" and estimating the difficult of implementing it.
+   - I'm aware that Unicode changes and human language changes, so the syntax
+     and backend would need to be changing, which probably isn't practical or
+     feasible. I'm aware that the general advice is to do this sort of thing in
+     libraries.
+   - I'm trying to sketch out what it could be, what an ideal solution (for me,
+     at least) might look like. Let ergonomics and use case define the syntax!
+     Then see if it indeed is more intuitive, a pleasure to use.
+   - And, a language that makes all this complexity first-class so it can become
+     learned, intuited, grasped, and thus maybe...less complex? In the way that
+     grokking reality even when reality is terrible complex somehow can makes
+     things less complex, because before what you were grokking was...not
+     reality.
    - The code is mostly...terrible. I'm going for red, green, refactor, with
      refactor tentatively planned for 2026. I work on Knot in the hour after my
      family goes to sleep while I can keep my eyes open. For this phase of the
@@ -168,6 +183,12 @@ ar_uppercase {
   # code...
 }
 #+END_SRC
+** presets
+   - Like Babel env presets -- useful collections of settings that most users
+     can use OOTB, don't need to spend the time setting up themselves.
+   - Sensible word boundary, whitespace, etc. Different from regexes in that
+     they're implemented as a synthetic property on code points -- nicer
+     ergonomics.
 * encodings are operators                                              :lang:
    - strings are utf-8 encoded by default? or a platonic, encoding-less unicode
      type, like Python u''?
@@ -250,6 +271,8 @@ last w      # last word
    - http://www.craftinginterpreters.com/
    - https://ruslanspivak.com/lsbasi-part1/
    - http://ergoemacs.org/emacs/elisp_font_lock_mode.html
+** moarvm
+    - https://github.com/MoarVM/MoarVM/pull/978
 * stack                                                      :implementation:
   - https://www.npmjs.com/package/utf8-stream
   - https://www.npmjs.com/package/token-stream
